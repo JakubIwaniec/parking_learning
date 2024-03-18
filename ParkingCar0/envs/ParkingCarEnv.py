@@ -16,8 +16,8 @@ class ParkingCarEnv(gym.Env):
     }
 
     def __init__(self, render_mode: Optional[str] = None):
-        self.screen_width = 400
-        self.screen_height = 400
+        self.screen_width = 800
+        self.screen_height = 800
         self.screen = None
         self.clock = None
         self.isopen = True
@@ -27,14 +27,18 @@ class ParkingCarEnv(gym.Env):
 
         self.gas_force = 1
         self.brake_force = 2
+        self.rotate_angle = 10
 
         self.rotation_max = 360
         self.velocity_max = 100  # ???????
 
-        self.low = np.array([0, 0, 0, 0, 0, 0], dtype=np.float32)
+        self.car_width = 15
+        self.car_height = 31
+
+        self.low = np.array([int(self.car_width/2 + 1), int(self.car_height/2 + 1), 0, 0, 0, 0], dtype=np.float32)
         self.high = np.array([
-            self.map_width,
-            self.map_height,
+            self.map_width - self.car_width,
+            self.map_height - self.car_height,
             self.velocity_max,
             self.rotation_max,
             self.map_width,
@@ -55,21 +59,20 @@ class ParkingCarEnv(gym.Env):
 
         car_x, car_y, car_v, car_r, dest_x, dest_y = self.state
 
-        # <- action == 0, here we can add movement resistance
-        if action == 0:
-            pass
-
         if action == 1:
             car_v += self.gas_force
-
-        if action == 2:
+        elif action == 2:
             car_v -= self.brake_force
+        elif action == 3:
+            car_r += self.rotate_angle
+        elif action == 4:
+            car_r -= self.rotate_angle
 
-        if action == 3 or action == 4:
-            # steering
-            pass
+        # <- action == 0, here we can add movement resistance
+        car_x += car_v * np.cos(car_r/180 * np.pi)
+        car_y += car_v * np.sin(car_r/180 * np.pi)
 
-        car_x += car_v
+        print(action)
 
         # <- condition of hitting the edge of the screen
 
@@ -94,7 +97,7 @@ class ParkingCarEnv(gym.Env):
             self.np_random.uniform(low=car_x_min, high=car_x_max),
             self.np_random.uniform(low=car_y_min, high=car_y_max),
             0,
-            0,
+            90,
             self.np_random.uniform(low=dest_x_min, high=dest_x_max),
             self.np_random.uniform(low=dest_y_min, high=dest_y_max),
         ])
@@ -124,27 +127,28 @@ class ParkingCarEnv(gym.Env):
         if self.clock is None:
             self.clock = pygame.time.Clock()
 
-        scale = self.screen_width / self.map_width
-
-        car_width = 10
-        car_height = 10
-        pos = self.state[0], self.state[1]
-
-
         self.surf = pygame.Surface((self.screen_width, self.screen_height))
         self.surf.fill((128, 128, 128))
 
+        scale_x = self.screen_width / self.map_width
+        scale_y = self.screen_height / self.map_height
+
+        pos = self.state[0], self.state[1]
+        car_pos_x = pos[0] * scale_x - int(self.car_width/2) + 1
+        car_pos_y = pos[1] * scale_y - int(self.car_height/2) + 1
+        car_render = pygame.Rect(car_pos_x, car_pos_y,
+                                 self.car_width, self.car_height)
+        car_render = car_render.scale_by(scale_x, scale_y)
+
         pygame.draw.rect(
             self.surf,
-            'red',
-            pygame.Rect(pos[0] + car_width/2, pos[1] + car_height/2, car_width, car_height),
+            'green',
+            car_render,
         )
 
         self.surf = pygame.transform.flip(self.surf, False, True)
 
-
         self.screen.blit(self.surf, (0, 0))
-
 
         if self.render_mode == "human":
             pygame.event.pump()
