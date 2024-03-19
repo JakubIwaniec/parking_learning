@@ -16,8 +16,8 @@ class ParkingCarEnv(gym.Env):
     }
 
     def __init__(self, render_mode: Optional[str] = None):
-        self.screen_width = 800
-        self.screen_height = 800
+        self.screen_width = 400
+        self.screen_height = 400
         self.screen = None
         self.clock = None
         self.isopen = True
@@ -35,7 +35,14 @@ class ParkingCarEnv(gym.Env):
         self.car_width = 15
         self.car_height = 31
 
-        self.low = np.array([int(self.car_width/2 + 1), int(self.car_height/2 + 1), 0, 0, 0, 0], dtype=np.float32)
+        self.low = np.array([
+            int(self.car_width/2 + 1),
+            int(self.car_height/2 + 1),
+            0,
+            0,
+            0,
+            0
+        ], dtype=np.float32)
         self.high = np.array([
             self.map_width - self.car_width,
             self.map_height - self.car_height,
@@ -72,15 +79,20 @@ class ParkingCarEnv(gym.Env):
         car_x += car_v * np.cos(car_r/180 * np.pi)
         car_y += car_v * np.sin(car_r/180 * np.pi)
 
-        print(action)
 
         # <- condition of hitting the edge of the screen
+        # actually without rotation included
+
 
         terminated = bool(
-            car_x == dest_x and car_y == dest_y
+            # car_x == dest_x and car_y == dest_y
+            car_x < self.low[0] or car_x > self.high[0]
+            or car_y < self.low[1] or car_y > self.high[1]
         )
         reward = 0
         self.state = car_x, car_y, car_v, car_r, dest_x, dest_y
+
+        print(f'State: {self.state}, reward: {reward}, terminated: {terminated}')
 
         return np.array(self.state, dtype=np.float32), reward, terminated, False, {}
 
@@ -88,18 +100,18 @@ class ParkingCarEnv(gym.Env):
         super().reset(seed=seed)
 
         # na razie na sztywno
-        car_x_min, car_x_max = utils.maybe_parse_reset_bounds(options, 0, self.map_width)
-        car_y_min, car_y_max = utils.maybe_parse_reset_bounds(options, 0, self.map_height)
-        dest_x_min, dest_x_max = utils.maybe_parse_reset_bounds(options, 0, self.map_width)
-        dest_y_min, dest_y_max = utils.maybe_parse_reset_bounds(options, 0, self.map_height)
+        # car_x_min, car_x_max = utils.maybe_parse_reset_bounds(options, 0, self.map_width)
+        # car_y_min, car_y_max = utils.maybe_parse_reset_bounds(options, 0, self.map_height)
+        # dest_x_min, dest_x_max = utils.maybe_parse_reset_bounds(options, 0, self.map_width)
+        # dest_y_min, dest_y_max = utils.maybe_parse_reset_bounds(options, 0, self.map_height)
 
         self.state = np.array([
-            self.np_random.uniform(low=car_x_min, high=car_x_max),
-            self.np_random.uniform(low=car_y_min, high=car_y_max),
+            self.np_random.uniform(low=self.low[0], high=self.high[0]),
+            self.np_random.uniform(low=self.low[1], high=self.high[1]),
             0,
             90,
-            self.np_random.uniform(low=dest_x_min, high=dest_x_max),
-            self.np_random.uniform(low=dest_y_min, high=dest_y_max),
+            self.np_random.uniform(low=self.low[4], high=self.high[4]),
+            self.np_random.uniform(low=self.low[5], high=self.high[5]),
         ])
 
         if self.render_mode == "human":

@@ -7,7 +7,7 @@ import os
 from datetime import datetime
 
 pygame.init()
-screen = pygame.display.set_mode((800, 800))
+screen = pygame.display.set_mode((400, 400))
 
 env = gym.make("ParkingCar0/ParkingCar-v0", render_mode='human')
 
@@ -45,7 +45,10 @@ for game in range(1):
                 elif event.key == pygame.K_d:
                     action = 0
 
-        env.step(action)
+        state, reward, terminated, _, _ = env.step(action)
         env.render()
         pygame.time.delay(MS_FOR_FRAME)
+        print(terminated)
+        if terminated:
+            break
 env.close()

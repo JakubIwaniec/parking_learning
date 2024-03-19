@@ -7,4 +7,4 @@ print(env.reset())
 
 while True:
     env.render()
-    env.step(1)
+    env.step(0)
