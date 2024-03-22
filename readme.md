@@ -60,7 +60,7 @@ This environment simulates a parking car scenario where the goal is to park a ca
 
 ### Observation Space
 
-The observation space consists of a 6-dimensional Box:
+The observation space consists of a 6-element array:
 
 -  X-coordinate of the car
 -  Y-coordinate of the car
