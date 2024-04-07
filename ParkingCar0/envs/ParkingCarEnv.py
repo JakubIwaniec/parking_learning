@@ -1,3 +1,5 @@
+import random
+
 import gymnasium as gym
 import numpy as np
 
@@ -6,6 +8,37 @@ from gymnasium.envs.classic_control import utils
 from gymnasium.error import DependencyNotInstalled
 
 from typing import Optional
+
+import pygame
+
+CENTRE_POINT = (8, 15)
+
+
+class TargetArea(pygame.sprite.Sprite):
+    """
+    W razie jakbyśmy chcieli jednak
+    obiektowo zrobić cele/pasy to
+    zrobiłęm pierwszy zarys obiektu
+    """
+    def __init__(self, point: tuple = (0, 0)):
+        super().__init__()
+        self._path_to_image = "skiny\\cel.png"
+        self.point = point
+        self.is_pressed: bool = False
+
+    def set_point(self, new_point):
+        assert type(new_point) is tuple
+        assert len(new_point) == 2
+        self.point = new_point
+
+    def set_image(self):
+        if self.is_pressed:
+            self._path_to_image = "skiny\\cel_aktywny.png"
+        else:
+            self._path_to_image = "skiny\\cel.png"
+
+    def get_path_to_image(self):
+        return self._path_to_image
 
 
 class ParkingCarEnv(gym.Env):
@@ -79,10 +112,8 @@ class ParkingCarEnv(gym.Env):
         car_x += car_v * np.cos(car_r/180 * np.pi)
         car_y += car_v * np.sin(car_r/180 * np.pi)
 
-
         # <- condition of hitting the edge of the screen
         # actually without rotation included
-
 
         terminated = bool(
             # car_x == dest_x and car_y == dest_y
@@ -159,6 +190,13 @@ class ParkingCarEnv(gym.Env):
         )
 
         self.surf = pygame.transform.flip(self.surf, False, True)
+
+        parking = pygame.image.load("skiny\\pasy.png")
+        self.surf.blit(source=parking, dest=(0, 0))
+        rand = random.randint(0, 5)
+        target = TargetArea()
+        target_surf = pygame.image.load(target.get_path_to_image())
+        self.surf.blit(source=target_surf, dest=(8+30*rand, 15))
 
         self.screen.blit(self.surf, (0, 0))
 
