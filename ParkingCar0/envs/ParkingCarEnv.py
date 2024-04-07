@@ -4,25 +4,30 @@ import gymnasium as gym
 import numpy as np
 
 from gymnasium import spaces
-from gymnasium.envs.classic_control import utils
+# from gymnasium.envs.classic_control import utils
 from gymnasium.error import DependencyNotInstalled
 
 from typing import Optional
 
 import pygame
 
-CENTRE_POINT = (8, 15)
+PARKING_IMAGE = pygame.image.load("skiny\\parking_lanes.png")
+# kordy srodka dla pierwszego miejsca parkowania
+#   - render celu
+FIRST_LANE_CENTER = (8, 15)
+# kordy wielkosci parkingu
+PARKING_XY = PARKING_IMAGE.get_size()
 
 
 class TargetArea(pygame.sprite.Sprite):
     """
     W razie jakbyśmy chcieli jednak
     obiektowo zrobić cele/pasy to
-    zrobiłęm pierwszy zarys obiektu
+    zrobiłem pierwszy zarys obiektu
     """
     def __init__(self, point: tuple = (0, 0)):
         super().__init__()
-        self._path_to_image = "skiny\\cel.png"
+        self._path_to_image = "skiny\\dest.png"
         self.point = point
         self.is_pressed: bool = False
 
@@ -33,9 +38,9 @@ class TargetArea(pygame.sprite.Sprite):
 
     def set_image(self):
         if self.is_pressed:
-            self._path_to_image = "skiny\\cel_aktywny.png"
+            self._path_to_image = "skiny\\dest_active.png"
         else:
-            self._path_to_image = "skiny\\cel.png"
+            self._path_to_image = "skiny\\dest.png"
 
     def get_path_to_image(self):
         return self._path_to_image
@@ -52,6 +57,8 @@ class ParkingCarEnv(gym.Env):
         self.screen_width = 400
         self.screen_height = 400
         self.screen = None
+        self.surf = pygame.Surface((self.screen_width, self.screen_height))
+        self.surf.fill((128, 128, 128))
         self.clock = None
         self.isopen = True
 
@@ -68,9 +75,16 @@ class ParkingCarEnv(gym.Env):
         self.car_width = 15
         self.car_height = 31
 
+        self.dest_x = FIRST_LANE_CENTER[0] + 30*random.randint(0, 5)
+        self.dest_y = FIRST_LANE_CENTER[1]
+        # czy narysowano cel
+        self.rendered_dest = False
+
         self.low = np.array([
+            # x bez korda aby auto spawnowalo sie tez 'pod' parkingiem
             int(self.car_width/2 + 1),
-            int(self.car_height/2 + 1),
+            # wczesniej byla szansa ze auto bedzie wewnatrz parkingu
+            (PARKING_XY[1] + int(self.car_height/2 + 1)) * 2,
             0,
             0,
             0,
@@ -141,11 +155,13 @@ class ParkingCarEnv(gym.Env):
             self.np_random.uniform(low=self.low[1], high=self.high[1]),
             0,
             90,
-            self.np_random.uniform(low=self.low[4], high=self.high[4]),
-            self.np_random.uniform(low=self.low[5], high=self.high[5]),
+            self.dest_x,
+            self.dest_y,
         ])
 
         if self.render_mode == "human":
+            self.rendered_dest = False
+            self.surf.fill((128, 128, 128))
             self.render()
         return np.array(self.state, dtype=np.float32), {}
 
@@ -170,9 +186,6 @@ class ParkingCarEnv(gym.Env):
         if self.clock is None:
             self.clock = pygame.time.Clock()
 
-        self.surf = pygame.Surface((self.screen_width, self.screen_height))
-        self.surf.fill((128, 128, 128))
-
         scale_x = self.screen_width / self.map_width
         scale_y = self.screen_height / self.map_height
 
@@ -189,14 +202,17 @@ class ParkingCarEnv(gym.Env):
             car_render,
         )
 
-        self.surf = pygame.transform.flip(self.surf, False, True)
+        # nie wiem po co to transform, kiedy zmienialem renderowanie
+        #   tylko mi obraz odwracalo
+        # self.surf = pygame.transform.flip(self.surf, False, True)
 
-        parking = pygame.image.load("skiny\\pasy.png")
-        self.surf.blit(source=parking, dest=(0, 0))
-        rand = random.randint(0, 5)
-        target = TargetArea()
-        target_surf = pygame.image.load(target.get_path_to_image())
-        self.surf.blit(source=target_surf, dest=(8+30*rand, 15))
+        # rysuj raz cel - i tak sie nie porusza
+        if not self.rendered_dest:
+            self.surf.blit(source=PARKING_IMAGE, dest=(0, 0))
+            target = TargetArea()
+            target_surf = pygame.image.load(target.get_path_to_image())
+            self.surf.blit(source=target_surf, dest=(self.dest_x, self.dest_y))
+            self.rendered_dest = True
 
         self.screen.blit(self.surf, (0, 0))
 
