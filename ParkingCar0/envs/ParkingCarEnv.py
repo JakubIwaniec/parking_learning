@@ -12,7 +12,7 @@ class ParkingCarEnv(gym.Env):
 
     metadata = {
         "render_modes": ["human", "rgb_array"],
-        "render_fps": 5,
+        "render_fps": 30,
     }
 
     def __init__(self, render_mode: Optional[str] = None):
@@ -146,17 +146,35 @@ class ParkingCarEnv(gym.Env):
         scale_y = self.screen_height / self.map_height
 
         pos = self.state[0], self.state[1]
-        car_pos_x = pos[0] * scale_x - int(self.car_width/2) + 1
-        car_pos_y = pos[1] * scale_y - int(self.car_height/2) + 1
-        car_render = pygame.Rect(car_pos_x, car_pos_y,
-                                 self.car_width, self.car_height)
-        car_render = car_render.scale_by(scale_x, scale_y)
+        car_pos_x = pos[0] * scale_x
+        car_pos_y = pos[1] * scale_y
 
-        pygame.draw.rect(
-            self.surf,
-            'green',
-            car_render,
-        )
+        # Utwórz powierzchnię reprezentującą samochód
+        car_render = pygame.Surface((self.car_height, self.car_width), pygame.SRCALPHA)
+
+        # Ustawienie gradientu kolorów
+        gradient_rect = pygame.Rect(0, 0, self.car_height, self.car_width)
+        color_start = (255, 255, 255)  # Kolor początkowy gradientu (biały)
+        color_end = (255, 0, 0)  # Kolor końcowy gradientu (czerwony)
+        pygame.draw.rect(car_render, color_start, gradient_rect)
+        for x in range(self.car_height):
+            progress = x / self.car_height
+            current_color = (
+                int(color_end[0] * (1 - progress) + color_start[0] * progress),
+                int(color_end[1] * (1 - progress) + color_start[1] * progress),
+                int(color_end[2] * (1 - progress) + color_start[2] * progress),
+                200  # Ustawienie przezroczystości
+            )
+            pygame.draw.line(car_render, current_color, (x, 0), (x, self.car_width))
+
+        # Obrót samochodu wokół jego środka
+        rotated_car = pygame.transform.rotate(car_render, -self.state[3])
+        rotated_rect = rotated_car.get_rect(center=(self.car_width / 2, self.car_height / 2))
+
+        # Oblicz pozycję samochodu po obróceniu
+        rotated_pos = rotated_rect.move(car_pos_x - self.car_width / 2, car_pos_y - self.car_height / 2)
+
+        self.surf.blit(rotated_car, rotated_pos)
 
         self.surf = pygame.transform.flip(self.surf, False, True)
 
@@ -167,7 +185,6 @@ class ParkingCarEnv(gym.Env):
             self.clock.tick(self.metadata["render_fps"])
             pygame.display.flip()
 
-        # nie wiem do czego to
         elif self.render_mode == "rgb_array":
             return np.transpose(
                 np.array(pygame.surfarray.pixels3d(self.screen)), axes=(1, 0, 2)

@@ -11,7 +11,7 @@ screen = pygame.display.set_mode((400, 400))
 
 env = gym.make("ParkingCar0/ParkingCar-v0", render_mode='human')
 
-MS_FOR_FRAME = 5
+MS_FOR_FRAME = 30
 
 initial_state = env.reset()
 
