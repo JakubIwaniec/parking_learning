@@ -11,7 +11,7 @@ from typing import Optional
 
 import pygame
 
-PARKING_IMAGE = pygame.image.load("skiny\\parking_lanes.png")
+PARKING_IMAGE = pygame.image.load("skins\\parking_lanes.png")
 # kordy srodka dla pierwszego miejsca parkowania
 #   - render celu
 FIRST_LANE_CENTER = (8, 15)
@@ -27,7 +27,7 @@ class TargetArea(pygame.sprite.Sprite):
     """
     def __init__(self, point: tuple = (0, 0)):
         super().__init__()
-        self._path_to_image = "skiny\\dest.png"
+        self._path_to_image = "skins\\dest.png"
         self.point = point
         self.is_pressed: bool = False
 
@@ -38,9 +38,9 @@ class TargetArea(pygame.sprite.Sprite):
 
     def set_image(self):
         if self.is_pressed:
-            self._path_to_image = "skiny\\dest_active.png"
+            self._path_to_image = "skins\\dest_active.png"
         else:
-            self._path_to_image = "skiny\\dest.png"
+            self._path_to_image = "skins\\dest.png"
 
     def get_path_to_image(self):
         return self._path_to_image
