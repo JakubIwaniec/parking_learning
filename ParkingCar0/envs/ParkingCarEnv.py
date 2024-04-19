@@ -81,10 +81,8 @@ class ParkingCarEnv(gym.Env):
         self.rendered_dest = False
 
         self.low = np.array([
-            # x bez korda aby auto spawnowalo sie tez 'pod' parkingiem
-            int(self.car_width/2 + 1),
-            # wczesniej byla szansa ze auto bedzie wewnatrz parkingu
-            (PARKING_XY[1] + int(self.car_height/2 + 1)) * 2,
+            0,
+            0,
             0,
             0,
             0,
@@ -151,8 +149,10 @@ class ParkingCarEnv(gym.Env):
         # dest_y_min, dest_y_max = utils.maybe_parse_reset_bounds(options, 0, self.map_height)
 
         self.state = np.array([
-            self.np_random.uniform(low=self.low[0], high=self.high[0]),
-            self.np_random.uniform(low=self.low[1], high=self.high[1]),
+            # x bez korda aby auto spawnowalo sie tez 'pod' parkingiem
+            self.np_random.uniform(low=int(self.car_width/2 + 1), high=self.high[0]),
+            # wczesniej byla szansa ze auto bedzie wewnatrz parkingu
+            self.np_random.uniform(low=(PARKING_XY[1] + int(self.car_height/2 + 1)) * 2, high=self.high[1]),
             0,
             90,
             self.dest_x,
@@ -196,25 +196,26 @@ class ParkingCarEnv(gym.Env):
                                  self.car_width, self.car_height)
         car_render = car_render.scale_by(scale_x, scale_y)
 
+        # nie wiem po co to transform, kiedy zmienialem renderowanie
+        #   tylko mi obraz odwracalo
+        # self.surf = pygame.transform.flip(self.surf, False, True)
+
+        target = TargetArea()
+        target_surf = pygame.image.load(target.get_path_to_image())
+
+        self.surf.blit(source=PARKING_IMAGE, dest=(0, 0))
+        self.surf.blit(source=target_surf, dest=(self.dest_x, self.dest_y))
         pygame.draw.rect(
             self.surf,
             'green',
             car_render,
         )
-
-        # nie wiem po co to transform, kiedy zmienialem renderowanie
-        #   tylko mi obraz odwracalo
-        # self.surf = pygame.transform.flip(self.surf, False, True)
-
-        # rysuj raz cel - i tak sie nie porusza
-        if not self.rendered_dest:
-            self.surf.blit(source=PARKING_IMAGE, dest=(0, 0))
-            target = TargetArea()
-            target_surf = pygame.image.load(target.get_path_to_image())
-            self.surf.blit(source=target_surf, dest=(self.dest_x, self.dest_y))
-            self.rendered_dest = True
-
+        pygame.display.flip()
+        self.rendered_dest = True
         self.screen.blit(self.surf, (0, 0))
+
+        pygame.display.flip()
+        self.surf.fill((128, 128, 128))
 
         if self.render_mode == "human":
             pygame.event.pump()
