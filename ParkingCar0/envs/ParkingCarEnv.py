@@ -1,5 +1,5 @@
 import random
-
+import time
 import gymnasium as gym
 import numpy as np
 
@@ -122,7 +122,7 @@ class ParkingCarEnv(gym.Env):
 
         # <- action == 0, here we can add movement resistance
         car_x += car_v * np.cos(car_r/180 * np.pi)
-        car_y += car_v * np.sin(car_r/180 * np.pi)
+        car_y -= car_v * np.sin(car_r/180 * np.pi)
 
         # <- condition of hitting the edge of the screen
         # actually without rotation included

@@ -18,7 +18,7 @@ initial_state = env.reset()
 for game in range(1):
     done = False
     action = 0
-    env.reset()
+
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
