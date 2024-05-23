@@ -1,17 +1,18 @@
-import random
-import time
+import pygame
 import gymnasium as gym
-import numpy as np
-
 from gymnasium import spaces
 # from gymnasium.envs.classic_control import utils
 from gymnasium.error import DependencyNotInstalled
-
 from typing import Optional
+import random
+import numpy as np
+import os
 
-import pygame
 
-PARKING_IMAGE = pygame.image.load("skins\\parking_lanes.png")
+current_file_path = os.path.abspath(__file__)
+ROOT_PATH = os.path.dirname(os.path.dirname(os.path.dirname(current_file_path)))
+SKINS_PATH = os.path.join(ROOT_PATH, 'skins')
+PARKING_IMAGE = pygame.image.load(os.path.join(SKINS_PATH, 'parking_lanes.png'))
 # kordy srodka dla pierwszego miejsca parkowania
 #   - render celu
 FIRST_LANE_CENTER = (8, 15)
@@ -27,7 +28,7 @@ class TargetArea(pygame.sprite.Sprite):
     """
     def __init__(self, point: tuple = (0, 0)):
         super().__init__()
-        self._path_to_image = "skins\\dest.png"
+        self._path_to_dest_image = os.path.join(SKINS_PATH, 'dest.png')
         self.point = point
         self.is_pressed: bool = False
 
@@ -38,12 +39,12 @@ class TargetArea(pygame.sprite.Sprite):
 
     def set_image(self):
         if self.is_pressed:
-            self._path_to_image = "skins\\dest_active.png"
+            self._path_to_dest_image = os.path.join(SKINS_PATH, 'dest_active.png')
         else:
-            self._path_to_image = "skins\\dest.png"
+            self._path_to_dest_image = os.path.join(SKINS_PATH, 'dest.png')
 
     def get_path_to_image(self):
-        return self._path_to_image
+        return self._path_to_dest_image
 
 
 class ParkingCarEnv(gym.Env):
@@ -122,7 +123,7 @@ class ParkingCarEnv(gym.Env):
 
         # <- action == 0, here we can add movement resistance
         car_x += car_v * np.cos(car_r/180 * np.pi)
-        car_y -= car_v * np.sin(car_r/180 * np.pi)
+        car_y += car_v * np.sin(car_r/180 * np.pi)
 
         # <- condition of hitting the edge of the screen
         # actually without rotation included
@@ -198,10 +199,10 @@ class ParkingCarEnv(gym.Env):
 
         # nie wiem po co to transform, kiedy zmienialem renderowanie
         #   tylko mi obraz odwracalo
-        # self.surf = pygame.transform.flip(self.surf, False, True)
+        self.surf = pygame.transform.flip(self.surf, False, True)
 
         target = TargetArea()
-        target_surf = pygame.image.load(target.get_path_to_image())
+        target_surf = pygame.image.load(target.get_path_to_image())   # czy jest koniecznosc przy kazdym kroku ladowac na nowo zdjecie
 
         self.surf.blit(source=PARKING_IMAGE, dest=(0, 0))
         self.surf.blit(source=target_surf, dest=(self.dest_x, self.dest_y))
@@ -210,11 +211,9 @@ class ParkingCarEnv(gym.Env):
             'green',
             car_render,
         )
-        pygame.display.flip()
         self.rendered_dest = True
         self.screen.blit(self.surf, (0, 0))
 
-        pygame.display.flip()
         self.surf.fill((128, 128, 128))
 
         if self.render_mode == "human":
@@ -222,7 +221,6 @@ class ParkingCarEnv(gym.Env):
             self.clock.tick(self.metadata["render_fps"])
             pygame.display.flip()
 
-        # nie wiem do czego to
         elif self.render_mode == "rgb_array":
             return np.transpose(
                 np.array(pygame.surfarray.pixels3d(self.screen)), axes=(1, 0, 2)
