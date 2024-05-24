@@ -1,10 +1,7 @@
 import ParkingCar0
 import gymnasium as gym
 import pygame
-import numpy as np
 import sys
-import os
-from datetime import datetime
 
 pygame.init()
 screen = pygame.display.set_mode((400, 400))
@@ -13,12 +10,10 @@ env = gym.make("ParkingCar0/ParkingCar-v0", render_mode='human')
 
 MS_FOR_FRAME = 30
 
-initial_state = env.reset()
-
 for game in range(1):
     done = False
     action = 0
-    env.reset()
+    initial_state = env.reset()
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -48,7 +43,6 @@ for game in range(1):
         state, reward, terminated, _, _ = env.step(action)
         env.render()
         pygame.time.delay(MS_FOR_FRAME)
-        print(terminated)
         if terminated:
             break
 env.close()

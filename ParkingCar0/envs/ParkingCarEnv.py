@@ -1,11 +1,11 @@
 import gymnasium as gym
-import numpy as np
 
 from gymnasium import spaces
-from gymnasium.envs.classic_control import utils
 from gymnasium.error import DependencyNotInstalled
 
 from typing import Optional
+import numpy as np
+import pygame
 
 
 class ParkingCarEnv(gym.Env):
@@ -20,7 +20,8 @@ class ParkingCarEnv(gym.Env):
         self.screen_height = 400
         self.screen = None
         self.clock = None
-        self.isopen = True
+        self.is_open = True
+        self.state = None
 
         self.map_width = 400
         self.map_height = 400
@@ -57,6 +58,8 @@ class ParkingCarEnv(gym.Env):
         # [car_x, car_y, car_velocity, car_rot, destination_x, destination_y]
         self.observation_space = spaces.Box(self.low, self.high, dtype=np.float32)
 
+        self.images = {}
+        self.parking = None
         self.render_mode = render_mode
 
     def step(self, action: int):
@@ -79,10 +82,8 @@ class ParkingCarEnv(gym.Env):
         car_x += car_v * np.cos(car_r/180 * np.pi)
         car_y += car_v * np.sin(car_r/180 * np.pi)
 
-
         # <- condition of hitting the edge of the screen
         # actually without rotation included
-
 
         terminated = bool(
             # car_x == dest_x and car_y == dest_y
@@ -92,12 +93,21 @@ class ParkingCarEnv(gym.Env):
         reward = 0
         self.state = car_x, car_y, car_v, car_r, dest_x, dest_y
 
-        print(f'State: {self.state}, reward: {reward}, terminated: {terminated}')
+        # print(f'State: {self.state}, reward: {reward}, terminated: {terminated}')
 
         return np.array(self.state, dtype=np.float32), reward, terminated, False, {}
 
     def reset(self, seed: Optional[int] = None, options: Optional[dict] = None):
+        try:
+            import pygame
+            from pygame import gfxdraw
+        except ImportError as e:
+            raise DependencyNotInstalled(
+                "pygame is not installed, run `pip install gymnasium[classic-control]`"
+            ) from e
+
         super().reset(seed=seed)
+        self.parking = Parking(200, 200)
 
         # na razie na sztywno
         # car_x_min, car_x_max = utils.maybe_parse_reset_bounds(options, 0, self.map_width)
@@ -139,8 +149,9 @@ class ParkingCarEnv(gym.Env):
         if self.clock is None:
             self.clock = pygame.time.Clock()
 
-        self.surf = pygame.Surface((self.screen_width, self.screen_height))
-        self.surf.fill((128, 128, 128))
+        surf = pygame.Surface((self.screen_width, self.screen_height))
+        surf.fill((128, 128, 128))
+        self.parking.draw(surf)  # without scaling right now
 
         scale_x = self.screen_width / self.map_width
         scale_y = self.screen_height / self.map_height
@@ -174,11 +185,10 @@ class ParkingCarEnv(gym.Env):
         # Oblicz pozycję samochodu po obróceniu
         rotated_pos = rotated_rect.move(car_pos_x - self.car_width / 2, car_pos_y - self.car_height / 2)
 
-        self.surf.blit(rotated_car, rotated_pos)
+        surf.blit(rotated_car, rotated_pos)
 
-        self.surf = pygame.transform.flip(self.surf, False, True)
-
-        self.screen.blit(self.surf, (0, 0))
+        surf = pygame.transform.flip(surf, False, True)
+        self.screen.blit(surf, (0, 0))
 
         if self.render_mode == "human":
             pygame.event.pump()
@@ -196,4 +206,44 @@ class ParkingCarEnv(gym.Env):
 
             pygame.display.quit()
             pygame.quit()
-            self.isopen = False
+            self.is_open = False
+
+
+class Parking:
+    def __init__(self, x, y, fill_color=(47, 79, 79), border_color=(255, 255, 255)):
+        """
+        x, y - centre of Parking
+        ~actually without scaling~
+        """
+        self.fill_color = fill_color
+        self.border_color = border_color
+
+        self.border_thickness = 3  # Better if odd
+        self.slots = 6
+        self.slot_width = 20
+        self.slot_height = 40
+        self.x = x - self.get_width()/2
+        self.y = y - (self.slot_height + self.border_thickness)/2
+
+    def get_width(self):
+        return (self.border_thickness + self.slot_width) * self.slots + self.border_thickness - 1
+
+    def draw(self, surface):
+        border_side = (self.border_thickness - 1)/2
+        up_line_width = self.get_width()
+
+        # Down line
+        pygame.draw.line(surface, self.border_color, (self.x, self.y), (self.x + up_line_width, self.y),
+                         self.border_thickness)
+        x = self.x + border_side
+        y = self.y + border_side
+        # First left line
+        pygame.draw.line(surface, self.border_color, (x, y), (x, y + self.slot_height), self.border_thickness)
+
+        x += border_side + 1
+        for slot in range(self.slots):
+            pygame.draw.rect(surface, self.fill_color, (x, y + 1, self.slot_width, self.slot_height))
+            x += self.slot_width + border_side
+            pygame.draw.line(surface, self.border_color, (x, y),
+                             (x, y + self.slot_height), self.border_thickness)
+            x += border_side + 1
