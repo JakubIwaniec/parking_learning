@@ -67,6 +67,7 @@ class ParkingCarEnv(gym.Env):
         self.parking_slot_height = 40
         self.parking_slot_border_thickness = 3
 
+        # Destination params
         self.destination = None
         self.destination_width = self.parking_slot_width / 2 + 1
         self.destination_height = self.parking_slot_height/2
@@ -95,18 +96,24 @@ class ParkingCarEnv(gym.Env):
         # <- condition of hitting the edge of the screen
         # actually without rotation included
 
-        terminated = bool(
-            # car_x == dest_x and car_y == dest_y
-            car_x < self.low[0] or car_x > self.high[0]
-            or car_y < self.low[1] or car_y > self.high[1]
+        done = bool(
+            self.destination.is_inside(car_x, car_y) and
+            car_v == 0
         )
+
+        terminated = bool(
+            done or
+            car_x < self.low[0] or car_x > self.high[0] or
+            car_y < self.low[1] or car_y > self.high[1]
+        )
+
         reward = 0
 
         self.state = car_x, car_y, car_v, car_r, dest_x, dest_y
 
         # print(f'State: {self.state}, reward: {reward}, terminated: {terminated}')
 
-        return np.array(self.state, dtype=np.float32), reward, terminated, False, {}
+        return np.array(self.state, dtype=np.float32), reward, terminated, done, {}
 
     def reset(self, seed: Optional[int] = None, options: Optional[dict] = None):
         try:
@@ -249,6 +256,10 @@ class Destination:
 
         self.dest_width = dest_width
         self.dest_height = dest_height
+
+    def is_inside(self, x, y):
+        return bool(self.x <= x <= (self.x + self.dest_width) and
+                    self.y <= y <= (self.y + self.dest_height))
 
     def draw(self, surface):
         # draw destination after drawing the parking

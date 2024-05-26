@@ -40,7 +40,7 @@ for game in range(1):
                 elif event.key == pygame.K_d:
                     action = 0
 
-        state, reward, terminated, _, _ = env.step(action)
+        state, reward, terminated, done, _ = env.step(action)
         env.render()
         pygame.time.delay(MS_FOR_FRAME)
         if terminated:
