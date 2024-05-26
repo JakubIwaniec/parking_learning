@@ -44,5 +44,5 @@ for game in range(1):
         env.render()
         pygame.time.delay(MS_FOR_FRAME)
         if terminated:
-            break
+            initial_state = env.reset()
 env.close()

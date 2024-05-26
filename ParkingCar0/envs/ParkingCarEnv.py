@@ -6,10 +6,10 @@ from gymnasium.error import DependencyNotInstalled
 from typing import Optional
 import numpy as np
 import pygame
+import random
 
 
 class ParkingCarEnv(gym.Env):
-
     metadata = {
         "render_modes": ["human", "rgb_array"],
         "render_fps": 30,
@@ -37,8 +37,8 @@ class ParkingCarEnv(gym.Env):
         self.car_height = 31
 
         self.low = np.array([
-            int(self.car_width/2 + 1),
-            int(self.car_height/2 + 1),
+            int(self.car_width / 2 + 1),
+            int(self.car_height / 2 + 1),
             0,
             0,
             0,
@@ -79,8 +79,8 @@ class ParkingCarEnv(gym.Env):
             car_r -= self.rotate_angle
 
         # <- action == 0, here we can add movement resistance
-        car_x += car_v * np.cos(car_r/180 * np.pi)
-        car_y += car_v * np.sin(car_r/180 * np.pi)
+        car_x += car_v * np.cos(car_r / 180 * np.pi)
+        car_y += car_v * np.sin(car_r / 180 * np.pi)
 
         # <- condition of hitting the edge of the screen
         # actually without rotation included
@@ -91,6 +91,7 @@ class ParkingCarEnv(gym.Env):
             or car_y < self.low[1] or car_y > self.high[1]
         )
         reward = 0
+
         self.state = car_x, car_y, car_v, car_r, dest_x, dest_y
 
         # print(f'State: {self.state}, reward: {reward}, terminated: {terminated}')
@@ -209,6 +210,19 @@ class ParkingCarEnv(gym.Env):
             self.is_open = False
 
 
+class Destination:
+    def __init__(self, x, y, color=pygame.Color("yellow"), outline_color=pygame.Color("black")):
+        """
+        :param x: width relative to Parking 'x'
+        :param y: height relative to Parking 'y'
+        """
+        self.x = x
+        self.y = y
+        self.main_color = color
+        self.outline_color = outline_color
+        self.outline_thickness = 1
+
+
 class Parking:
     def __init__(self, x, y, fill_color=(47, 79, 79), border_color=(255, 255, 255)):
         """
@@ -222,14 +236,24 @@ class Parking:
         self.slots = 6
         self.slot_width = 20
         self.slot_height = 40
-        self.x = x - self.get_width()/2
-        self.y = y - (self.slot_height + self.border_thickness)/2
+
+        self.x = x - self.get_width() / 2
+        self.y = y - (self.slot_height + self.border_thickness) / 2
+
+        self.dest_width = self.slot_width / 2
+        self.dest_height = self.slot_height / 2
+        # calculate x and y for Destination class
+        self.picked_slot = random.randint(0, 5)
+        self.picked_x = self.x + self.border_thickness + self.dest_width / 2 + \
+                        (self.border_thickness + self.slot_width) * self.picked_slot
+        self.picked_y = self.y + self.dest_height / 2
+        self.destination = Destination(self.picked_x, self.picked_y)
 
     def get_width(self):
         return (self.border_thickness + self.slot_width) * self.slots + self.border_thickness - 1
 
     def draw(self, surface):
-        border_side = (self.border_thickness - 1)/2
+        border_side = (self.border_thickness - 1) / 2
         up_line_width = self.get_width()
 
         # Down line
@@ -242,8 +266,15 @@ class Parking:
 
         x += border_side + 1
         for slot in range(self.slots):
-            pygame.draw.rect(surface, self.fill_color, (x, y + 1, self.slot_width, self.slot_height))
+            pygame.draw.rect(surface, self.fill_color,
+                             (x, y, self.slot_width, self.slot_height))
             x += self.slot_width + border_side
             pygame.draw.line(surface, self.border_color, (x, y),
                              (x, y + self.slot_height), self.border_thickness)
             x += border_side + 1
+        # draw destination after drawing the parking
+        pygame.draw.rect(surface, self.destination.main_color,
+                         (self.destination.x, self.destination.y, self.dest_width, self.dest_height))
+        pygame.draw.rect(surface, self.destination.outline_color,
+                         (self.destination.x, self.destination.y, self.dest_width, self.dest_height),
+                         width=self.destination.outline_thickness)
