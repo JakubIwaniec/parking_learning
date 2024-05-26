@@ -83,8 +83,10 @@ class ParkingCarEnv(gym.Env):
         if action == 1:
             car_v += self.gas_force
         elif action == 2:
-            if car_v > 0:
+            if car_v > self.brake_force:
                 car_v -= self.brake_force
+            elif 0 < car_v < self.brake_force:
+                car_v = 0
             else:
                 car_v -= self.gas_force / 2
         elif action == 3:
