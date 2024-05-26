@@ -30,7 +30,7 @@ class ParkingCarEnv(gym.Env):
         self.brake_force = 2
         self.rotate_angle = 10
         self.rotation_max = 360
-        self.velocity_max = 100  # ???????
+        self.velocity_max = 10  # ???????
 
         self.car_width = 15
         self.car_height = 31
@@ -83,11 +83,19 @@ class ParkingCarEnv(gym.Env):
         if action == 1:
             car_v += self.gas_force
         elif action == 2:
-            car_v -= self.brake_force
+            if car_v > 0:
+                car_v -= self.brake_force
+            else:
+                car_v -= self.gas_force / 2
         elif action == 3:
             car_r += self.rotate_angle
         elif action == 4:
             car_r -= self.rotate_angle
+
+        if car_v >= self.velocity_max:
+            car_v = self.velocity_max
+        elif car_v <= -self.velocity_max:
+            car_v = -self.velocity_max
 
         # <- action == 0, here we can add movement resistance
         car_x += car_v * np.cos(car_r / 180 * np.pi)
