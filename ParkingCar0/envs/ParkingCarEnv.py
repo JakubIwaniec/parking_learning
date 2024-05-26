@@ -141,9 +141,9 @@ class ParkingCarEnv(gym.Env):
         self.parking = Parking(parking_x, parking_y, self.parking_slot_width, self.parking_slot_height,
                                self.parking_slot_border_thickness, self.parking_slots)
 
-        destination_x, destination_y = self.parking.get_random_slot_coords()
-        destination_x -= (self.destination_width + 2 * self.destination_outline_thickness) / 2
-        destination_y -= (self.destination_height + 2 * self.destination_outline_thickness) / 2
+        destination_x_center, destination_y_center = self.parking.get_random_slot_coords()
+        destination_x = destination_x_center - (self.destination_width + 2 * self.destination_outline_thickness) / 2
+        destination_y = destination_y_center - (self.destination_height + 2 * self.destination_outline_thickness) / 2
         self.destination = Destination(destination_x, destination_y, self.destination_width, self.destination_height,
                                        self.destination_outline_thickness)
 
@@ -158,8 +158,8 @@ class ParkingCarEnv(gym.Env):
             self.np_random.uniform(low=self.low[1], high=self.high[1]),
             0,
             90,
-            self.np_random.uniform(low=self.low[4], high=self.high[4]),
-            self.np_random.uniform(low=self.low[5], high=self.high[5]),
+            destination_x_center,
+            destination_y_center,
         ])
 
         if self.render_mode == "human":
@@ -269,8 +269,10 @@ class Destination:
         return bool(self.x <= x <= (self.x + self.dest_width) and
                     self.y <= y <= (self.y + self.dest_height))
 
+    def get_centre(self):
+        return self.x + self.dest_width/2, self.y + self.dest_height/2
+
     def draw(self, surface):
-        # draw destination after drawing the parking
         pygame.draw.rect(surface, self.main_color,
                          (self.x, self.y, self.dest_width, self.dest_height))
         pygame.draw.rect(surface, self.outline_color,
