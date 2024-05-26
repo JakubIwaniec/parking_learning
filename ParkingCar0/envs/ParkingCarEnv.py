@@ -29,13 +29,13 @@ class ParkingCarEnv(gym.Env):
         self.gas_force = 1
         self.brake_force = 2
         self.rotate_angle = 10
-
         self.rotation_max = 360
         self.velocity_max = 100  # ???????
 
         self.car_width = 15
         self.car_height = 31
 
+        # start params low-high
         self.low = np.array([
             int(self.car_width / 2 + 1),
             int(self.car_height / 2 + 1),
@@ -58,9 +58,19 @@ class ParkingCarEnv(gym.Env):
         # [car_x, car_y, car_velocity, car_rot, destination_x, destination_y]
         self.observation_space = spaces.Box(self.low, self.high, dtype=np.float32)
 
-        self.images = {}
-        self.parking = None
         self.render_mode = render_mode
+
+        # Parking params
+        self.parking = None
+        self.parking_slots = 6
+        self.parking_slot_width = 20
+        self.parking_slot_height = 40
+        self.parking_slot_border_thickness = 3
+
+        self.destination = None
+        self.destination_width = self.parking_slot_width / 2 + 1
+        self.destination_height = self.parking_slot_height/2
+        self.destination_outline_thickness = 1
 
     def step(self, action: int):
         assert self.action_space.contains(
@@ -108,7 +118,19 @@ class ParkingCarEnv(gym.Env):
             ) from e
 
         super().reset(seed=seed)
-        self.parking = Parking(200, 200)
+
+        # centre of map
+        parking_x = 200 - (self.parking_slot_border_thickness * (self.parking_slots/2 + 0.5) +
+                           self.parking_slot_width * self.parking_slots/2)
+        parking_y = 200 - (self.parking_slot_height + self.parking_slot_border_thickness * 2) / 2
+        self.parking = Parking(parking_x, parking_y, self.parking_slot_width, self.parking_slot_height,
+                               self.parking_slot_border_thickness, self.parking_slots)
+
+        destination_x, destination_y = self.parking.get_random_slot_coords()
+        destination_x -= (self.destination_width + 2 * self.destination_outline_thickness) / 2
+        destination_y -= (self.destination_height + 2 * self.destination_outline_thickness) / 2
+        self.destination = Destination(destination_x, destination_y, self.destination_width, self.destination_height,
+                                       self.destination_outline_thickness)
 
         # na razie na sztywno
         # car_x_min, car_x_max = utils.maybe_parse_reset_bounds(options, 0, self.map_width)
@@ -152,7 +174,9 @@ class ParkingCarEnv(gym.Env):
 
         surf = pygame.Surface((self.screen_width, self.screen_height))
         surf.fill((128, 128, 128))
+
         self.parking.draw(surf)  # without scaling right now
+        self.destination.draw(surf)
 
         scale_x = self.screen_width / self.map_width
         scale_y = self.screen_height / self.map_height
@@ -211,7 +235,8 @@ class ParkingCarEnv(gym.Env):
 
 
 class Destination:
-    def __init__(self, x, y, color=pygame.Color("yellow"), outline_color=pygame.Color("black")):
+    def __init__(self, x, y, dest_width, dest_height, outline_thickness,
+                 color=pygame.Color("yellow"), outline_color=pygame.Color("black")):
         """
         :param x: width relative to Parking 'x'
         :param y: height relative to Parking 'y'
@@ -220,37 +245,50 @@ class Destination:
         self.y = y
         self.main_color = color
         self.outline_color = outline_color
-        self.outline_thickness = 1
+        self.outline_thickness = outline_thickness
+
+        self.dest_width = dest_width
+        self.dest_height = dest_height
+
+    def draw(self, surface):
+        # draw destination after drawing the parking
+        pygame.draw.rect(surface, self.main_color,
+                         (self.x, self.y, self.dest_width, self.dest_height))
+        pygame.draw.rect(surface, self.outline_color,
+                         (self.x, self.y, self.dest_width, self.dest_height),
+                         width=self.outline_thickness)
 
 
 class Parking:
-    def __init__(self, x, y, fill_color=(47, 79, 79), border_color=(255, 255, 255)):
+    def __init__(self, x, y, slot_width=40, slot_height=20, border_thickness=3, slots=6,
+                 fill_color=(47, 79, 79), border_color=(255, 255, 255)):
         """
-        x, y - centre of Parking
+        x, y - left down corner of parking space
         ~actually without scaling~
         """
         self.fill_color = fill_color
         self.border_color = border_color
 
-        self.border_thickness = 3  # Better if odd
-        self.slots = 6
-        self.slot_width = 20
-        self.slot_height = 40
+        self.border_thickness = border_thickness  # Better if odd
+        self.slots = slots
+        self.slot_width = slot_width
+        self.slot_height = slot_height
 
-        self.x = x - self.get_width() / 2
-        self.y = y - (self.slot_height + self.border_thickness) / 2
-
-        self.dest_width = self.slot_width / 2
-        self.dest_height = self.slot_height / 2
-        # calculate x and y for Destination class
-        self.picked_slot = random.randint(0, 5)
-        self.picked_x = self.x + self.border_thickness + self.dest_width / 2 + \
-                        (self.border_thickness + self.slot_width) * self.picked_slot
-        self.picked_y = self.y + self.dest_height / 2
-        self.destination = Destination(self.picked_x, self.picked_y)
+        self.x = x
+        self.y = y
 
     def get_width(self):
         return (self.border_thickness + self.slot_width) * self.slots + self.border_thickness - 1
+
+    def get_height(self):
+        return self.border_thickness + self.slot_height
+
+    def get_random_slot_coords(self):
+        """Return coords x, y of centre of random parking slot."""
+        random_slot = random.randint(0, self.slots - 1)
+        x = self.border_thickness + self.slot_width / 2 + random_slot * (self.slot_width + self.border_thickness)
+        y = self.get_height() / 2
+        return self.x + x, self.y + y
 
     def draw(self, surface):
         border_side = (self.border_thickness - 1) / 2
@@ -266,15 +304,10 @@ class Parking:
 
         x += border_side + 1
         for slot in range(self.slots):
+            # dest
             pygame.draw.rect(surface, self.fill_color,
-                             (x, y, self.slot_width, self.slot_height))
+                             (x, y, self.slot_width, self.slot_height))  # y+1? tak było
             x += self.slot_width + border_side
             pygame.draw.line(surface, self.border_color, (x, y),
                              (x, y + self.slot_height), self.border_thickness)
             x += border_side + 1
-        # draw destination after drawing the parking
-        pygame.draw.rect(surface, self.destination.main_color,
-                         (self.destination.x, self.destination.y, self.dest_width, self.dest_height))
-        pygame.draw.rect(surface, self.destination.outline_color,
-                         (self.destination.x, self.destination.y, self.dest_width, self.dest_height),
-                         width=self.destination.outline_thickness)
