@@ -90,9 +90,15 @@ class ParkingCarEnv(gym.Env):
             else:
                 car_v -= self.gas_force / 2
         elif action == 3:
-            car_r += self.rotate_angle
+            if car_v >= 0:
+                car_r += self.rotate_angle
+            else:
+                car_r -= self.rotate_angle
         elif action == 4:
-            car_r -= self.rotate_angle
+            if car_v >= 0:
+                car_r -= self.rotate_angle
+            else:
+                car_r += self.rotate_angle
 
         if car_v >= self.velocity_max:
             car_v = self.velocity_max
