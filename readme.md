@@ -87,6 +87,10 @@ The agent receives a reward of `0` at each time step.
 
 The episode terminates when the car goes out of bounds or reaches the destination.
 
+### Done
+
+The episode is considered completed if the center of the car is in the field marked as the destination and the velocity of car is equal to `0`.
+
 ## Rendering
 
 This environment supports rendering in two modes:
