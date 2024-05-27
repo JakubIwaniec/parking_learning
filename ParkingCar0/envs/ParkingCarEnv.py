@@ -80,10 +80,6 @@ class ParkingCarEnv(gym.Env):
 
         car_x, car_y, car_v, car_r, dest_x, dest_y = self.state
 
-        # register velocity direction
-        v = self.state[2]
-        driving_forward = bool(v >= 0)
-        #
         if action == 1:
             car_v += self.gas_force
         elif action == 2:
@@ -93,10 +89,9 @@ class ParkingCarEnv(gym.Env):
                 car_v = 0
             else:
                 car_v -= self.gas_force / 2
-        # reverse angle turn when going backwards
-        elif (action == 3 and driving_forward) or (action == 4 and not driving_forward):
+        elif action == 3:
             car_r += self.rotate_angle
-        elif (action == 3 and not driving_forward) or (action == 4 and driving_forward):
+        elif action == 4:
             car_r -= self.rotate_angle
 
         if car_v >= self.velocity_max:
@@ -105,14 +100,8 @@ class ParkingCarEnv(gym.Env):
             car_v = -self.velocity_max
 
         # <- action == 0, here we can add movement resistance
-
-
-        if driving_forward:
-            car_x += car_v * np.cos(car_r / 180 * np.pi)
-            car_y += car_v * np.sin(car_r / 180 * np.pi)
-        else:
-            car_x += car_v * np.cos(car_r / 180 * np.pi)
-            car_y += car_v * np.sin(car_r / 180 * np.pi)
+        car_x += car_v * np.cos(car_r / 180 * np.pi)
+        car_y += car_v * np.sin(car_r / 180 * np.pi)
 
         # <- condition of hitting the edge of the screen
         # actually without rotation included
