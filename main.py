@@ -1,8 +1,8 @@
-import ParkingCar0
+import ParkingCar
 import gymnasium as gym
 
 
-env = gym.make("ParkingCar0/ParkingCar-v0", render_mode='human')
+env = gym.make("ParkingCar/ParkingCar-v1", render_mode='human')
 print(env.reset())
 
 while True:
