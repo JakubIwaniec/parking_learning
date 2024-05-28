@@ -77,7 +77,7 @@ class ParkingCarEnv(gym.Env):
             car_r += self.rotate_angle * (8* car_v / self.velocity_max) # "8*" bo tyle mi się wydało sensowe patrząc na skręt w symulacji, można to zmienić, większa wartoś = bardziej zwrotny pojazd
 
         elif action == 4:
-                car_r -= self.rotate_angle * (8* car_v / self.velocity_max) # "8*" bo tyle mi się wydało sensowe patrząc na skręt w symulacji, można to zmienić, większa wartoś = bardziej zwrotny pojazd
+                car_r -= self.rotate_angle * (8* car_v / self.velocity_max)
 
         if car_v >= self.velocity_max:
             car_v = self.velocity_max
