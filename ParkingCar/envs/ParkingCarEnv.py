@@ -125,6 +125,13 @@ class ParkingCarEnv(gym.Env):
 
         reward = 0
 
+        distance_to_destination = np.sqrt((car_x - dest_x) ** 2 + (car_y - dest_y) ** 2)
+        distance_max = self.map_width * np.sqrt(2) / 2
+        reward += 1 - distance_to_destination / distance_max
+
+        if done:
+            reward += 1000
+
         self.state = car_x, car_y, car_v, car_r, dest_x, dest_y
 
         # print(f'State: {self.state}, reward: {reward}, terminated: {terminated}')
