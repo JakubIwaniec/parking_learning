@@ -74,62 +74,101 @@ class ParkingCarEnv(gym.Env):
         self.destination_outline_thickness = 1
 
     def step(self, action: int):
-        assert self.action_space.contains(
-            action
-        ), f"{action!r} ({type(action)}) invalid"
+        assert self.action_space.contains(action), f"{action!r} ({type(action)}) invalid"
 
         car_x, car_y, car_v, car_r, dest_x, dest_y = self.state
 
-        if action == 1:
-            car_v += self.gas_force
-        elif action == 2:
-            if car_v > self.brake_force:
-                car_v -= self.brake_force
-            elif 0 < car_v < self.brake_force:
-                car_v = 0
-            else:
-                car_v -= self.gas_force / 2
-        elif action == 3:
-            if car_v >= 0:
-                car_r += self.rotate_angle
-            else:
-                car_r -= self.rotate_angle
-        elif action == 4:
-            if car_v >= 0:
-                car_r -= self.rotate_angle
-            else:
-                car_r += self.rotate_angle
+        # Zapisanie starej odległości od celu
+        old_distance_to_goal = np.sqrt((car_x - dest_x) ** 2 + (car_y - dest_y) ** 2)
 
-        if car_v >= self.velocity_max:
-            car_v = self.velocity_max
-        elif car_v <= -self.velocity_max:
-            car_v = -self.velocity_max
+        # Akcja: przyspieszanie, hamowanie, skręty
+        if action == 1:  # Gaz
+            car_v += self.gas_force * (1 if car_v >= 0 else 1.5)  # Szybsze przyspieszanie na wstecznym
+        elif action == 2:  # Hamowanie
+            car_v = max(0, car_v - self.brake_force)
+        elif action == 3:  # Skręt w lewo
+            car_r += self.rotate_angle if car_v > 0 else -self.rotate_angle
+        elif action == 4:  # Skręt w prawo
+            car_r -= self.rotate_angle if car_v > 0 else -self.rotate_angle
 
-        # <- action == 0, here we can add movement resistance
+        # Ograniczenie prędkości
+        car_v = np.clip(car_v, -self.velocity_max, self.velocity_max)
+
+        # Aktualizacja pozycji na podstawie prędkości i rotacji
         car_x += car_v * np.cos(car_r / 180 * np.pi)
         car_y += car_v * np.sin(car_r / 180 * np.pi)
 
-        # <- condition of hitting the edge of the screen
-        # actually without rotation included
+        # Obliczenie nowej odległości od celu
+        distance_to_goal = np.sqrt((car_x - dest_x) ** 2 + (car_y - dest_y) ** 2)
 
-        done = bool(
-            self.destination.is_inside(car_x, car_y) and
-            car_v == 0
-        )
-
-        terminated = bool(
-            done or
-            car_x < self.low[0] or car_x > self.high[0] or
-            car_y < self.low[1] or car_y > self.high[1]
-        )
-
+        # Definiowanie nagrody
         reward = 0
+        if self.destination.is_inside(car_x, car_y) and abs(car_v) < 0.1:
+            reward = 1000  # Duża nagroda za poprawne zaparkowanie
+            done = True
+        else:
+            # Nagroda za zmniejszenie odległości do celu
+            reward += (old_distance_to_goal - distance_to_goal) * 10
 
+            # Kara za opuszczenie obszaru
+            if car_x < self.low[0] or car_x > self.high[0] or car_y < self.low[1] or car_y > self.high[1]:
+                reward -= 100
+                done = True
+            else:
+                done = False
+
+        # Aktualizacja stanu
         self.state = car_x, car_y, car_v, car_r, dest_x, dest_y
 
-        # print(f'State: {self.state}, reward: {reward}, terminated: {terminated}')
+        return np.array(self.state, dtype=np.float32), reward, done, done, {}
 
-        return np.array(self.state, dtype=np.float32), reward, terminated, done, {}
+    # def step(self, action: int):
+    #     assert self.action_space.contains(action), f"{action!r} ({type(action)}) invalid"
+    #
+    #     car_x, car_y, car_v, car_r, dest_x, dest_y = self.state
+    #
+    #     # Akcja: przyspieszanie, hamowanie, skręty
+    #     if action == 1:  # Gaz
+    #         car_v += self.gas_force * (1 if car_v >= 0 else 1.5)  # Szybsze przyspieszanie na wstecznym
+    #     elif action == 2:  # Hamowanie
+    #         car_v = max(0, car_v - self.brake_force)
+    #     elif action == 3:  # Skręt w lewo
+    #         car_r += self.rotate_angle if car_v > 0 else -self.rotate_angle
+    #     elif action == 4:  # Skręt w prawo
+    #         car_r -= self.rotate_angle if car_v > 0 else -self.rotate_angle
+    #
+    #     # Ograniczenie prędkości
+    #     car_v = np.clip(car_v, -self.velocity_max, self.velocity_max)
+    #
+    #     # Aktualizacja pozycji na podstawie prędkości i rotacji
+    #     car_x += car_v * np.cos(car_r / 180 * np.pi)
+    #     car_y += car_v * np.sin(car_r / 180 * np.pi)
+    #
+    #     # Obliczenie odległości od celu
+    #     distance_to_goal = np.sqrt((car_x - dest_x) ** 2 + (car_y - dest_y) ** 2)
+    #
+    #     # Definiowanie nagrody
+    #     reward = 0
+    #     if self.destination.is_inside(car_x, car_y) and abs(car_v) < 0.1:
+    #         reward = 1000  # Duża nagroda za poprawne zaparkowanie
+    #         done = True
+    #     else:
+    #         # Nagroda za zbliżanie się do celu
+    #         reward += max(10 - distance_to_goal / 10, 0)  # Większa nagroda, im bliżej celu
+    #         # Kara za zbyt dużą prędkość blisko miejsca parkingowego
+    #         if distance_to_goal < 20 and abs(car_v) > 2:
+    #             reward -= 20
+    #         # Kara za opuszczenie obszaru
+    #         if car_x < self.low[0] or car_x > self.high[0] or car_y < self.low[1] or car_y > self.high[1]:
+    #             reward -= 100
+    #             done = True
+    #         else:
+    #             done = False
+    #
+    #     # Aktualizacja stanu
+    #     self.state = car_x, car_y, car_v, car_r, dest_x, dest_y
+    #
+    #     return np.array(self.state, dtype=np.float32), reward, done, done, {}
 
     def reset(self, seed: Optional[int] = None, options: Optional[dict] = None):
         try:
