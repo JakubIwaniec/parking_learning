@@ -1,4 +1,5 @@
 import gymnasium as gym
+import numpy.random
 
 from gymnasium import spaces
 from gymnasium.error import DependencyNotInstalled
@@ -124,8 +125,11 @@ class ParkingCarEnv(gym.Env):
             car_x < self.low[0] or car_x > self.high[0] or
             car_y < self.low[1] or car_y > self.high[1]
         )
-
-        reward = 0
+        if (car_x < self.low[0] or car_x > self.high[0] or
+            car_y < self.low[1] or car_y > self.high[1]):
+            reward = -50
+        else:
+            reward = 0
 
         distance_to_destination = np.sqrt((car_x - dest_x) ** 2 + (car_y - dest_y) ** 2)
         distance_max = self.map_width * np.sqrt(2) / 2
@@ -171,9 +175,13 @@ class ParkingCarEnv(gym.Env):
         # dest_x_min, dest_x_max = utils.maybe_parse_reset_bounds(options, 0, self.map_width)
         # dest_y_min, dest_y_max = utils.maybe_parse_reset_bounds(options, 0, self.map_height)
 
+        #
+
+
+
         self.state = np.array([
-            self.np_random.uniform(low=self.low[0], high=self.high[0]),
-            self.np_random.uniform(low=self.low[1], high=self.high[1]),
+            random_int_with_exclusion(self.low[0], self.high[0], 3/8 * self.map_width, 5/8 * self.map_width),
+            random_int_with_exclusion(self.low[1], self.high[1], 3/8 * self.map_height, 5/8 * self.map_height),
             0,
             self.np_random.uniform(low=self.low[3], high=self.high[3]),
             destination_x_center,
@@ -350,3 +358,10 @@ class Parking:
             pygame.draw.line(surface, self.border_color, (x, y),
                              (x, y + self.slot_height), self.border_thickness)
             x += border_side + 1
+
+
+def random_int_with_exclusion(a, b, exclude_start, exclude_end):
+    if np.random.random_integers(0, 1):
+        return np.random.random_integers(a, exclude_start)
+    else:
+        return np.random.random_integers(exclude_end, b)
