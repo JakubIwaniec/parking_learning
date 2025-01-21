@@ -42,7 +42,7 @@ for game in range(1):
                     action = 0
 
         state, reward, terminated, done, _ = env.step(action)
-        print(reward)
+        print(state, reward, terminated, done)
         game_reward += reward
         env.render()
         pygame.time.delay(MS_FOR_FRAME)

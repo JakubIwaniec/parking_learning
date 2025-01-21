@@ -30,7 +30,7 @@ class ParkingCarEnv(gym.Env):
         self.brake_force = 2
         self.rotate_angle = 10
         self.rotation_max = 360
-        self.velocity_max = 10  # ???????
+        self.velocity_max = 100  # ???????
 
         self.car_width = 15
         self.car_height = 31
@@ -39,7 +39,7 @@ class ParkingCarEnv(gym.Env):
         self.low = np.array([
             int(self.car_width / 2 + 1),
             int(self.car_height / 2 + 1),
-            0,
+            -self.velocity_max,
             0,
             0,
             0
@@ -100,6 +100,8 @@ class ParkingCarEnv(gym.Env):
             else:
                 car_r += self.rotate_angle
 
+        car_r %= 360
+
         if car_v >= self.velocity_max:
             car_v = self.velocity_max
         elif car_v <= -self.velocity_max:
@@ -127,14 +129,15 @@ class ParkingCarEnv(gym.Env):
 
         distance_to_destination = np.sqrt((car_x - dest_x) ** 2 + (car_y - dest_y) ** 2)
         distance_max = self.map_width * np.sqrt(2) / 2
-        reward += 1 - distance_to_destination / distance_max
+        reward += 1 - distance_to_destination/distance_max
 
         if done:
             reward += 1000
+            print("SUCCESS")
 
         self.state = car_x, car_y, car_v, car_r, dest_x, dest_y
 
-        # print(f'State: {self.state}, reward: {reward}, terminated: {terminated}')
+        #print(f'Action: {action}, distance: {distance_to_destination}')
 
         return np.array(self.state, dtype=np.float32), reward, terminated, done, {}
 
@@ -172,7 +175,7 @@ class ParkingCarEnv(gym.Env):
             self.np_random.uniform(low=self.low[0], high=self.high[0]),
             self.np_random.uniform(low=self.low[1], high=self.high[1]),
             0,
-            90,
+            self.np_random.uniform(low=self.low[3], high=self.high[3]),
             destination_x_center,
             destination_y_center,
         ])

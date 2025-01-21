@@ -13,13 +13,13 @@ import webbrowser
 import os
 frames = []
 episodes_per_GIF = 600
-want_gifs = True  # nalezy ustawic domyslna aplikacje do gifow
+want_gifs = False  # nalezy ustawic domyslna aplikacje do gifow
 # (np. Internet Explorer) wtedy gify beda pojawialy się w jednym okienku
 
 
-HIDDEN_UNITS_SIZE = 64  # ilość neuronów w warstwie ukrytej
-EPISODES_AMOUNT = 3000
-MAX_STEPS_PER_EPISODE = 500
+HIDDEN_UNITS_SIZE = 256  # ilość neuronów w warstwie ukrytej
+EPISODES_AMOUNT = 50000
+MAX_STEPS_PER_EPISODE = 1000
 MIN_EPISODES_CRITERION = 100  # zmienna wykorzystywana przy obliczaniu średniej
 
 GAMMA = 0.99
@@ -31,7 +31,7 @@ class NeuralNetwork(tf.keras.Model):
         super().__init__()
         self.optimizer = tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE)
 
-        self.common = tf.keras.layers.Dense(hidden_units, activation='relu')
+        self.common = tf.keras.layers.Dense(hidden_units, activation='leaky_relu')
         self.out = tf.keras.layers.Dense(out_size)
 
     def call(self, inputs: tf.Tensor) -> tf.Tensor:
@@ -40,7 +40,7 @@ class NeuralNetwork(tf.keras.Model):
         return x
 
 
-#@tf.function
+@tf.function
 def run_episode(initial_state: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor]:
     observations = tf.TensorArray(dtype=tf.float32, size=0, dynamic_size=True)
     actions = tf.TensorArray(dtype=tf.int64, size=0, dynamic_size=True)
@@ -81,15 +81,13 @@ def compute_loss(actions, action_probabilities, returns):
     return loss
 
 
-#@tf.function
+@tf.function
 def train_step(initial_state: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
     observations, actions, rewards = run_episode(initial_state)
     with tf.GradientTape() as tape:
         net_output = net(observations)
         action_probabilities = tf.nn.softmax(net_output)
         returns = discount_rewards(rewards, GAMMA, True)
-        for i in range(len(actions)):
-            print(net_output[i], '---', action_probabilities[i])
         loss = compute_loss(actions, action_probabilities, returns)
 
     grads = tape.gradient(loss, net.trainable_variables)

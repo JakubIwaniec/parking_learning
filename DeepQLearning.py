@@ -17,13 +17,13 @@ episodes_per_GIF = 600
 want_gifs = True  # nalezy ustawic domyslna aplikacje do gifow
 # (np. Internet Explorer) wtedy gify beda pojawialy się w jednym okienku
 
-HIDDEN_UNITS_SIZE = 64
+HIDDEN_UNITS_SIZE = 128
 EPISODES_AMOUNT = 6000
 MAX_STEPS_PER_EPISODE = 500
 MIN_EPISODES_CRITERION = 100
 
 GAMMA = 0.99
-LEARNING_RATE = 0.001
+LEARNING_RATE = 0.01
 
 BUFFER_SIZE = 4000
 BATCH_SIZE = 32

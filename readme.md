@@ -103,7 +103,3 @@ This environment supports rendering in two modes:
 This environment is authored by Miłosz Stolarski, Jakub Iwaniec and Miłosz Gostyński. 
 
 For more details and contributions, refer to the [Gymnasium Documentation](https://gymnasium.farama.org/).
-
-## License
-
-This environment is released under the [MIT License](https://opensource.org/licenses/MIT).
