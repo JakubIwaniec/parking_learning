@@ -17,9 +17,9 @@ episodes_per_GIF = 600
 want_gifs = True  # nalezy ustawic domyslna aplikacje do gifow
 # (np. Internet Explorer) wtedy gify beda pojawialy się w jednym okienku
 
-HIDDEN_UNITS_SIZE = 128
+HIDDEN_UNITS_SIZE = 256
 EPISODES_AMOUNT = 6000
-MAX_STEPS_PER_EPISODE = 500
+MAX_STEPS_PER_EPISODE = 1000
 MIN_EPISODES_CRITERION = 100
 
 GAMMA = 0.99
@@ -28,8 +28,8 @@ LEARNING_RATE = 0.01
 BUFFER_SIZE = 4000
 BATCH_SIZE = 32
 MIN_EPISODES_BEFORE_TRAIN = 50
-DECREASE_EPSILON_TO_EPISODE = 4 / 5 * EPISODES_AMOUNT
-EPSILON_MIN = 0.01
+DECREASE_EPSILON_TO_EPISODE = 3 / 5 * EPISODES_AMOUNT
+EPSILON_MIN = 0.1
 
 
 class NeuralNetwork(tf.keras.Model):
@@ -140,7 +140,7 @@ with tqdm.trange(EPISODES_AMOUNT) as learning:
                              last_rewards_mean=running_reward, last_steps_mean=running_steps)
 
         if want_gifs and (episode_no + 1) % episodes_per_GIF == 0:
-            animation_path = f'animation.gif'
+            animation_path = f'animation{(episode_no+1)}.gif'
             frames[0].save(animation_path, save_all=True, append_images=frames[1:], loop=0, duration=1)
 
             # Otwarcie animacji w przeglądarce

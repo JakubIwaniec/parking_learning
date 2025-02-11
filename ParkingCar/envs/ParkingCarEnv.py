@@ -120,6 +120,7 @@ class ParkingCarEnv(gym.Env):
             car_v == 0
         )
 
+
         terminated = bool(
             done or
             car_x < self.low[0] or car_x > self.high[0] or
@@ -127,9 +128,10 @@ class ParkingCarEnv(gym.Env):
         )
         if (car_x < self.low[0] or car_x > self.high[0] or
             car_y < self.low[1] or car_y > self.high[1]):
-            reward = -50
+            reward = -100
         else:
             reward = 0
+
 
         distance_to_destination = np.sqrt((car_x - dest_x) ** 2 + (car_y - dest_y) ** 2)
         distance_max = self.map_width * np.sqrt(2) / 2

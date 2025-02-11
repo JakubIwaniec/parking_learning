@@ -18,11 +18,11 @@ class Env(gymnasium.Env):
         return observation
 
     def step(self, action: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-        observation, reward, done, end, _ = self.env.step(action)  # ignore 'info' return
+        observation, reward, end, done, _ = self.env.step(action)  # ignore 'info' return
         return (observation.astype(np.float32),
                 np.array(reward, np.float32),
-                np.array(done, bool),
-                np.array(end, bool))
+                np.array(end, bool),
+                np.array(done, bool))
 
     def tf_step(self, action: tf.Tensor) -> List[tf.Tensor]:
         return tf.numpy_function(self.step, [action], [tf.float32, tf.float32, tf.bool, tf.bool])

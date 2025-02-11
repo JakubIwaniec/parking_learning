@@ -18,8 +18,9 @@ want_gifs = False  # nalezy ustawic domyslna aplikacje do gifow
 
 
 HIDDEN_UNITS_SIZE = 256  # ilość neuronów w warstwie ukrytej
-EPISODES_AMOUNT = 50000
-MAX_STEPS_PER_EPISODE = 1000
+#EPISODES_AMOUNT = 1_000_000
+EPISODES_AMOUNT = 6_000
+MAX_STEPS_PER_EPISODE = 500
 MIN_EPISODES_CRITERION = 100  # zmienna wykorzystywana przy obliczaniu średniej
 
 GAMMA = 0.99
@@ -30,12 +31,15 @@ class NeuralNetwork(tf.keras.Model):
     def __init__(self, out_size: int, hidden_units: int):
         super().__init__()
         self.optimizer = tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE)
-
         self.common = tf.keras.layers.Dense(hidden_units, activation='leaky_relu')
-        self.out = tf.keras.layers.Dense(out_size)
+        self.common1 = tf.keras.layers.Dense(hidden_units, activation='leaky_relu')
+        self.common2 = tf.keras.layers.Dense(hidden_units, activation='relu')
+        self.out = tf.keras.layers.Dense(out_size, activation="softmax")
 
     def call(self, inputs: tf.Tensor) -> tf.Tensor:
         x = self.common(inputs)
+        x = self.common1(x)
+        x = self.common2(x)
         x = self.out(x)
         return x
 
@@ -51,8 +55,9 @@ def run_episode(initial_state: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor, tf.Tens
 
     for step in tf.range(MAX_STEPS_PER_EPISODE):
         net_output = net(tf.expand_dims(observation, 0))
+        #print(net_output)
         action = tf.random.categorical(net_output, 1)[0, 0]
-        next_observation, reward, done, _ = env.tf_step(action)
+        next_observation, reward, terminated, done = env.tf_step(action)
         next_observation.set_shape(obs_shape)
 
         observations = observations.write(step, observation)
@@ -60,8 +65,11 @@ def run_episode(initial_state: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor, tf.Tens
         rewards = rewards.write(step, reward)
 
         observation = next_observation
-        if done:
+        if terminated:
             break
+
+        if done:
+            pass
 
         if want_gifs and (episode_no + 1) % episodes_per_GIF == 0:
             frames.append(Image.fromarray(env.render()))
@@ -126,7 +134,9 @@ with tqdm.trange(EPISODES_AMOUNT) as learning:
             # Otwarcie animacji w przeglądarce
             webbrowser.open('file://' + os.path.realpath(animation_path))
             frames = []
-
+        # if running_reward > 300:
+        #     break
+net.save(filepath='REINFORCE.keras')
 
 plot_figure(rewards, steps, 'REINFORCE')
 env.close()
