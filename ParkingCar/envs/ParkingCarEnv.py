@@ -36,6 +36,10 @@ class ParkingCarEnv(gym.Env):
         self.car_width = 15
         self.car_height = 31
 
+        self.prev_distance = None  # Przechowuje poprzednią odległość
+        self.steps_moving_away = 0  # Licznik kroków oddalania się
+        self.max_steps_away = 6  # Próg, po którym dostanie karę
+
         # start params low-high
         self.low = np.array([
             int(self.car_width / 2 + 1),
@@ -64,23 +68,22 @@ class ParkingCarEnv(gym.Env):
         # Parking params
         self.parking = None
         self.parking_slots = 6
-        self.parking_slot_width = 20
-        self.parking_slot_height = 40
+        self.parking_slot_width = 20 #20
+        self.parking_slot_height = 40 #40
         self.parking_slot_border_thickness = 3
 
         # Destination params
         self.destination = None
-        self.destination_width = self.parking_slot_width / 2 + 1
-        self.destination_height = self.parking_slot_height/2
+        self.destination_width = self.parking_slot_width / 2 + 4 #+1
+        self.destination_height = self.parking_slot_height/2 + 6 #+0
         self.destination_outline_thickness = 1
 
     def step(self, action: int):
-        assert self.action_space.contains(
-            action
-        ), f"{action!r} ({type(action)}) invalid"
+        assert self.action_space.contains(action), f"{action!r} ({type(action)}) invalid"
 
         car_x, car_y, car_v, car_r, dest_x, dest_y = self.state
 
+        # --- Ruch pojazdu ---
         if action == 1:
             car_v += self.gas_force
         elif action == 2:
@@ -108,40 +111,57 @@ class ParkingCarEnv(gym.Env):
         elif car_v <= -self.velocity_max:
             car_v = -self.velocity_max
 
-        # <- action == 0, here we can add movement resistance
         car_x += car_v * np.cos(car_r / 180 * np.pi)
         car_y += car_v * np.sin(car_r / 180 * np.pi)
 
-        # <- condition of hitting the edge of the screen
-        # actually without rotation included
-
-        done = bool(
-            self.destination.is_inside(car_x, car_y) and
-            car_v == 0
-        )
-
-        terminated = bool(
-            done or
-            car_x < self.low[0] or car_x > self.high[0] or
-            car_y < self.low[1] or car_y > self.high[1]
-        )
-        if (car_x < self.low[0] or car_x > self.high[0] or
-            car_y < self.low[1] or car_y > self.high[1]):
-            reward = -50
-        else:
-            reward = 0
-
+        # --- Obliczanie odległości od celu ---
         distance_to_destination = np.sqrt((car_x - dest_x) ** 2 + (car_y - dest_y) ** 2)
-        distance_max = self.map_width * np.sqrt(2) / 2
-        reward += 1 - distance_to_destination/distance_max
 
+        # --- Sprawdzanie, czy agent się oddala ---
+        if self.prev_distance is not None:
+            if distance_to_destination > self.prev_distance:  # Jeśli się oddalił
+                self.steps_moving_away += 1
+            else:
+                self.steps_moving_away = 0  # Reset, jeśli się zbliżył
+
+        self.prev_distance = distance_to_destination  # Aktualizacja poprzedniej odległości
+
+        # --- Nagrody i kary ---
+        distance_max = self.map_width * np.sqrt(2) / 2
+        reward = 1 - distance_to_destination / distance_max  # Nagroda za zbliżanie się
+
+        # Kara za zbyt długie oddalanie się od celu
+        if self.steps_moving_away >= self.max_steps_away:
+            reward -= 20  # Kara za ciągłe oddalanie się
+            self.steps_moving_away = 0  # Reset licznika po nałożeniu kary
+
+        # Kara za przekroczenie granic planszy
+        if ( car_x < self.low[0] or car_x > self.high[0] or
+            car_y < self.low[1] or car_y > self.high[1]):
+            reward -= 10  # Kara za wyjście poza granice
+            terminated = True
+        else:
+            terminated = False
+
+        # Nagroda za zaparkowanie
+        done = bool(self.destination.is_inside(car_x, car_y) and car_v == 0)
         if done:
-            reward += 1000
+            reward += 10000  # Duża nagroda za zaparkowanie
             print("SUCCESS")
 
-        self.state = car_x, car_y, car_v, car_r, dest_x, dest_y
+        # --- Mechanizm skrętu, gdy agent stoi równolegle do celu ---
+        # Jeśli agent nie zbliża się do celu, a jest równolegle do niego (porusza się przód-tył),
+        # zmienia kąt, żeby zaczął skręcać i podejmować próbę naprowadzenia się na cel.
 
-        #print(f'Action: {action}, distance: {distance_to_destination}')
+        if np.abs(car_v) < 1e-2:  # Jeśli prędkość jest bardzo mała (np. porusza się przód-tył)
+            angle_diff = (np.arctan2(dest_y - car_y, dest_x - car_x) * 180 / np.pi) - car_r
+            angle_diff = (angle_diff + 180) % 360 - 180  # Zmiana zakresu na (-180, 180)
+
+            if np.abs(angle_diff) > 10:  # Jeśli kąt jest zbyt duży, skręcamy
+                reward -= 0.5  # Kara za nieoptymalne skręcanie
+                car_r += np.sign(angle_diff) * self.rotate_angle  # Skręcamy w kierunku celu
+
+        self.state = car_x, car_y, car_v, car_r, dest_x, dest_y
 
         return np.array(self.state, dtype=np.float32), reward, terminated, done, {}
 
@@ -190,6 +210,10 @@ class ParkingCarEnv(gym.Env):
 
         if self.render_mode == "human":
             self.render()
+        self.reached_max_reward = False  # Resetujemy flagę na początku nowego epizodu
+        self.prev_distance = None
+        self.steps_moving_away = 0
+
         return np.array(self.state, dtype=np.float32), {}
 
     def render(self):
